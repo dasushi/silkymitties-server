@@ -2,22 +2,37 @@ import numpy as np
 import math
 
 #overall:
-#input: [timestamp, accel[ax, ay,az], gyro [gx, gy, gz]]
-#output: interval, q[qa, qb, qc, qd] or [timestamp, theta[tx, ty, tz]]
+#input: [accel[timestamp, ax, ay, az], gyro [timestamp, gx, gy, gz]]
+#output: interval, theta[tx, ty, tz]
+#start_time = math.max(accel[0]['timestamp'], gyro[0]['timestamp'])
+#end_time = math.min(accel[-1]['timestamp'], gyro[-1]['timestamp'])
+#theta.length = min(start_time, end_time)
+
+def preprocessing(filename):
+
+
+    start_time = math.max(accel[0]['timestamp'], gyro[0]['timestamp'])
+    end_time = math.min(accel[-1]['timestamp'], gyro[-1]['timestamp'])
+    time_length = end_time - start_time
+    time_delta =
+    theta.length = min(start_time, end_time)
 
 #converts accelerometer readings into pitch euler angle
+#accel = [timestamp, ax, ay, az]
 def pitch_from_accel(accel):
-    return np.rad2deg(-math.atan2(az, math.sign(ay)*math.sqrt(ax]**2 + ay**2)))
+    return np.rad2deg(-math.atan2(accel[3], math.sign(accel[2])*math.sqrt(accel[1])**2 + accel[2]**2)))
 
+#converts accelerometer readings into roll euler angle
+#accel = [timestamp, ax, ay, az]
 def roll_from_accel(accel):
-    return np.rad2deg(-math.atan2(-accel[0], accel[1]))
+    return np.rad2deg(-math.atan2(-accel[1], accel[2]))
 
 #tilt correction for a stream of accel + gyro data with timestamps
 #puts accelerometer and gyroscope data into euler angles
 #uses trapezoidal integration for gyroscope
-#input: log_data: [timestamp, accel[ax, ay,az], gyro [gx, gy, gz]]
-#output: theta[x, y, z] in degrees, euler angles, same length as input log
-def tilt_correction(log_data):
+#input: accel[timestamp, ax, ay,az], gyro [timestamp, gx, gy, gz]
+#output: result:{delta, frames[theta[x, y, z]]} in degrees, euler angles
+def tilt_correction(accel, gyro):
     index = 0
     alpha = 0.98
     theta = np.zeros(log_data.ndim, 3)

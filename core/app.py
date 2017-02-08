@@ -1,8 +1,30 @@
 #!flask/bin/python
 import flask
 import pandas
+from django.db import models
 
 app = flask.Flask(__name__)
+
+class sensorEntry(models.Model):
+    shotID = models.IntegerField()
+    timestamp = models.IntegerField()
+    xVal = models.FloatField()
+    yVal = models.FloatField()
+    zVal = models.FloatField()
+
+class rawShotEntry(models.Model):
+    shotID = models.IntegerField()
+    userID = models.CharField(max_length = 30)
+
+    'upperHand':{
+        'accVals':{'time':{}, 'x-acc':{}, 'y-acc':{}, 'z-acc':{}},
+        'gyroVals':{'time':{}, 'x-gyro':{}, 'y-gyro':{}, 'z-gyro':{}},
+        'deviceID':u'rg132132'
+    },
+    'lowerHand':{
+        'accVals':{'time':{}, 'x-acc':{}, 'y-acc':{}, 'z-acc':{}},
+        'gyroVals':{'time':{}, 'x-gyro':{}, 'y-gyro':{}, 'z-gyro':{}},
+        'deviceID':u'rg132132'
 
 shots = [
     {
