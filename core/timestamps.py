@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 
 
 # Input
-# - Two arrays, gyro_samples and acceleration_samples, containing Sample objects
-# - Timestamps are not regularly spaced
+# - Two arrays, gyro_samples and acc_samples, containing Sample objects
+# - Timestamps are not reg spaced
 
 # Output
-# - Two arrays, gyro_samples and acceleration_samples, containing Sample objects
-# - Timestamps are regularly spaced
+# - Two arrays, gyro_samples and acc_samples, containing Sample objects
+# - Timestamps are reg spaced
 
 # Mock data
 class Sample(object):
@@ -24,19 +24,17 @@ class Sample(object):
         self.y = y
         self.z = z
 
-gyro_samples = []
-acceleration_samples = []
+def addTestData(acc_samples, gyro_samples):
+    gyro_samples.append(Sample(0, 0.3, 0.5, 0.2))
+    gyro_samples.append(Sample(5, 0.2, 0.3, 0.1))
+    gyro_samples.append(Sample(9, 0.6, 0.5, 0.9))
+    gyro_samples.append(Sample(15, 0.9, 0.8, 0.6))
 
-gyro_samples.append(Sample(0, 0.3, 0.5, 0.2))
-gyro_samples.append(Sample(5, 0.2, 0.3, 0.1))
-gyro_samples.append(Sample(9, 0.6, 0.5, 0.9))
-gyro_samples.append(Sample(15, 0.9, 0.8, 0.6))
-
-acceleration_samples.append(Sample(1, 0.7, 0.9, 0.2))
-acceleration_samples.append(Sample(3, 0.2, 0.2, 0.8))
-acceleration_samples.append(Sample(8, 0.1, 0.7, 0.5))
-acceleration_samples.append(Sample(13, 0.7, 0.3, 0.1))
-
+    acc_samples.append(Sample(1, 0.7, 0.9, 0.2))
+    acc_samples.append(Sample(3, 0.2, 0.2, 0.8))
+    acc_samples.append(Sample(8, 0.1, 0.7, 0.5))
+    acc_samples.append(Sample(13, 0.7, 0.3, 0.1))
+    return acc_samples, gyro_samples
 
 def extract_property_values(sample_list, sample_property):
     property_values = []
@@ -51,57 +49,74 @@ def extract_property_values(sample_list, sample_property):
             property_values.append(sample.z)
     return property_values
 
-# Sample object property arrays
-original_gyro_timestamps = extract_property_values(gyro_samples, 'timestamp')
-original_gyro_x = extract_property_values(gyro_samples, 'x')
-original_gyro_y = extract_property_values(gyro_samples, 'y')
-original_gyro_z = extract_property_values(gyro_samples, 'z')
+def regularizeTimestamps(accel, gyro):
 
-original_acceleration_timestamps = extract_property_values(acceleration_samples, 'timestamp')
-original_acceleration_x = extract_property_values(acceleration_samples, 'x')
-original_acceleration_y = extract_property_values(acceleration_samples, 'y')
-original_acceleration_z = extract_property_values(acceleration_samples, 'z')
+    #gyro_samples = []
+    #acc_samples = []
 
-# Regression functions
-interpolate_gyro_x = interp1d(original_gyro_timestamps, original_gyro_x)
-interpolate_gyro_y = interp1d(original_gyro_timestamps, original_gyro_y)
-interpolate_gyro_z = interp1d(original_gyro_timestamps, original_gyro_z)
+    # Sample object property arrays
+    #original_gyro_timestamps = extract_property_values(gyro_samples, 'timestamp')
+    #original_gyro_x = extract_property_values(gyro_samples, 'x')
+    #original_gyro_y = extract_property_values(gyro_samples, 'y')
+    #original_gyro_z = extract_property_values(gyro_samples, 'z')
 
-interpolate_accleration_x = interp1d(original_acceleration_timestamps, original_acceleration_x)
-interpolate_accleration_y = interp1d(original_acceleration_timestamps, original_acceleration_y)
-interpolate_accleration_z = interp1d(original_acceleration_timestamps, original_acceleration_z)
+    #original_acc_timestamps = extract_property_values(acc_samples, 'timestamp')
+    #original_acc_x = extract_property_values(acc_samples, 'x')
+    #original_acc_y = extract_property_values(acc_samples, 'y')
+    #original_acc_z = extract_property_values(acc_samples, 'z')
 
-# Create regularly-spaced timestamp array
-first_timestamp = max(gyro_samples[0].timestamp, acceleration_samples[0].timestamp)
-last_timestamp = min(gyro_samples[-1].timestamp, acceleration_samples[-1].timestamp)
-num_samples = (len(gyro_samples) + len(acceleration_samples)) / 2.0
-regularly_spaced_timestamps = np.linspace(0, last_timestamp, num_samples, endpoint=True)
+    #Split input into individual arrays
+    original_gyro_timestamps = np.array([int(row[0]) for row in gyro])
+    original_gyro_x = np.array([row[1] for row in gyro])
+    original_gyro_y = np.array([row[2] for row in gyro])
+    original_gyro_z = np.array([row[3] for row in gyro])
 
-regularly_spaced_gyro_x = interpolate_gyro_x(regularly_spaced_timestamps)
-regularly_spaced_gyro_y = interpolate_gyro_y(regularly_spaced_timestamps)
-regularly_spaced_gyro_z = interpolate_gyro_z(regularly_spaced_timestamps)
+    original_acc_timestamps = np.array([int(row[0]) for row in accel])
+    original_acc_x = np.array([row[1] for row in accel])
+    original_acc_y = np.array([row[2] for row in accel])
+    original_acc_z = np.array([row[3] for row in accel])
 
-regularly_spaced_accleration_x = interpolate_accleration_x(regularly_spaced_timestamps)
-regularly_spaced_accleration_y = interpolate_accleration_y(regularly_spaced_timestamps)
-regularly_spaced_accleration_z = interpolate_accleration_z(regularly_spaced_timestamps)
+    # Regression functions
+    interpolate_gyro_x = interp1d(original_gyro_timestamps, original_gyro_x)
+    interpolate_gyro_y = interp1d(original_gyro_timestamps, original_gyro_y)
+    interpolate_gyro_z = interp1d(original_gyro_timestamps, original_gyro_z)
 
-# Empty the gyro and accleration sample arrays
-gyro_samples = []
-acceleration_samples = []
+    interpolate_acc_x = interp1d(original_acc_timestamps, original_acc_x)
+    interpolate_acc_y = interp1d(original_acc_timestamps, original_acc_y)
+    interpolate_acc_z = interp1d(original_acc_timestamps, original_acc_z)
 
-# Fill gyro and accleration sample arrays with regularly-spaced values
-index = 0
-for t in regularly_spaced_timestamps:
-    gyro_samples.append(Sample(t, regularly_spaced_gyro_x[index], regularly_spaced_gyro_y[index], regularly_spaced_gyro_z[index]))
-    acceleration_samples.append(Sample(t, regularly_spaced_accleration_x[index], regularly_spaced_accleration_y[index], regularly_spaced_accleration_z[index]))
+    # Create regularly-spaced timestamp array
+    first_timestamp = max(original_gyro_timestamps[0], original_acc_timestamps[0])
+    last_timestamp = min(original_gyro_timestamps[-1], original_acc_timestamps[-1])
+    num_samples = int(round((len(original_gyro_timestamps) + len(original_acc_timestamps)) / 2))
+    reg_spaced_timestamps = np.linspace(first_timestamp, last_timestamp, num_samples, endpoint=True)
 
-# Plot just to test regression
-plt.plot(original_gyro_timestamps, original_gyro_x, 'o',
-    regularly_spaced_timestamps, regularly_spaced_gyro_x, '-',
-    regularly_spaced_timestamps, regularly_spaced_gyro_y, '-',
-    regularly_spaced_timestamps, regularly_spaced_gyro_z, '-',
-    regularly_spaced_timestamps, regularly_spaced_accleration_x, '-',
-    regularly_spaced_timestamps, regularly_spaced_accleration_y, '-',
-    regularly_spaced_timestamps, regularly_spaced_accleration_z, '-',)
-plt.legend(['original_gyro_x', 'regularly_spaced_gyro_x'], loc='best')
-plt.show()
+    reg_spaced_gyro_x = interpolate_gyro_x(reg_spaced_timestamps)
+    reg_spaced_gyro_y = interpolate_gyro_y(reg_spaced_timestamps)
+    reg_spaced_gyro_z = interpolate_gyro_z(reg_spaced_timestamps)
+
+    reg_spaced_acc_x = interpolate_acc_x(reg_spaced_timestamps)
+    reg_spaced_acc_y = interpolate_acc_y(reg_spaced_timestamps)
+    reg_spaced_acc_z = interpolate_acc_z(reg_spaced_timestamps)
+
+    # Fill gyro and acc sample arrays with reg-spaced values
+    gyro_samples = np.column_stack((reg_spaced_timestamps, reg_spaced_gyro_x, reg_spaced_gyro_y, reg_spaced_gyro_z))
+    acc_samples = np.column_stack((reg_spaced_timestamps, reg_spaced_acc_x, reg_spaced_acc_y, reg_spaced_acc_z))
+    #index = 0
+    #for t in reg_spaced_timestamps:
+    #    gyro_samples.append([t, reg_spaced_gyro_x[index], reg_spaced_gyro_y[index], reg_spaced_gyro_z[index]])
+    #    acc_samples.append([t, reg_spaced_acc_x[index], reg_spaced_acc_y[index], reg_spaced_acc_z[index]])
+
+    # Plot just to test regression
+    plt.plot(original_gyro_timestamps, original_gyro_x, 'o',
+        reg_spaced_timestamps, reg_spaced_gyro_x, '-',
+        reg_spaced_timestamps, reg_spaced_gyro_y, '-',
+        reg_spaced_timestamps, reg_spaced_gyro_z, '-',
+        reg_spaced_timestamps, reg_spaced_acc_x, '-',
+        reg_spaced_timestamps, reg_spaced_acc_y, '-',
+        reg_spaced_timestamps, reg_spaced_acc_z, '-',)
+    plt.legend(['original_gyro_x', 'reg_spaced_gyro_x'], loc='best')
+    plt.show()
+    #print(acc_samples)
+    #print(gyro_samples)
+    return acc_samples, gyro_samples
