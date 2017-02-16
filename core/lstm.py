@@ -4,11 +4,6 @@ from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
 from ketas.layers.embeddings import Embedding
 from keras.preprocessing import sequence
-from pymongo import MongoClient
-
-client = MongoClient()
-
-db = client['restdb']
 
 #fix random number for repeatability
 numpy.random.seed(17)
