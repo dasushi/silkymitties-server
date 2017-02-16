@@ -2,6 +2,9 @@
 
 1. Get Anaconda 4.2 for Python3
 2. Run Anaconda Prompt
+3. Install virtualenv
+ - pip install virtualenv
+4. Create virtualenv 
 3. Install necessary dependencies
   - pip install keras
   - pip install pymongo

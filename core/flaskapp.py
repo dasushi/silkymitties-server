@@ -1,5 +1,5 @@
 #!flask/bin/python
-from flask import Flask, jsonify
+from flask import Flask, jsonify, make_response
 from flask_pymongo import PyMongo
 #import pandas
 #from django.db import models
@@ -135,7 +135,7 @@ def index():
 
 @app.errorhandler(404)
 def not_found(error):
-    return make_response(Flask.jsonify({'error': 'Resource Not Found'}), 404)
+    return make_response(jsonify({'error': 'Resource Not Found'}), 404)
 
 if __name__=='__main__':
     app.run(debug=True)
