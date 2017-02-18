@@ -49,7 +49,7 @@ def extract_property_values(sample_list, sample_property):
             property_values.append(sample.z)
     return property_values
 
-def regularizeTimestamps(accel, gyro):
+def regularizeTimestamps(accel, gyro, plotResults):
 
     #gyro_samples = []
     #acc_samples = []
@@ -106,17 +106,17 @@ def regularizeTimestamps(accel, gyro):
     #for t in reg_spaced_timestamps:
     #    gyro_samples.append([t, reg_spaced_gyro_x[index], reg_spaced_gyro_y[index], reg_spaced_gyro_z[index]])
     #    acc_samples.append([t, reg_spaced_acc_x[index], reg_spaced_acc_y[index], reg_spaced_acc_z[index]])
-
-    # Plot just to test regression
-    plt.plot(original_gyro_timestamps, original_gyro_x, 'o',
-        reg_spaced_timestamps, reg_spaced_gyro_x, '-',
-        reg_spaced_timestamps, reg_spaced_gyro_y, '-',
-        reg_spaced_timestamps, reg_spaced_gyro_z, '-',
-        reg_spaced_timestamps, reg_spaced_acc_x, '-',
-        reg_spaced_timestamps, reg_spaced_acc_y, '-',
-        reg_spaced_timestamps, reg_spaced_acc_z, '-',)
-    plt.legend(['original_gyro_x', 'reg_spaced_gyro_x'], loc='best')
-    plt.show()
+    if(plotResults):
+        # Plot just to test regression
+        plt.plot(original_gyro_timestamps, original_gyro_x, 'o',
+            reg_spaced_timestamps, reg_spaced_gyro_x, '-',
+            reg_spaced_timestamps, reg_spaced_gyro_y, '-',
+            reg_spaced_timestamps, reg_spaced_gyro_z, '-',
+            reg_spaced_timestamps, reg_spaced_acc_x, '-',
+            reg_spaced_timestamps, reg_spaced_acc_y, '-',
+            reg_spaced_timestamps, reg_spaced_acc_z, '-',)
+        plt.legend(['original_gyro_x', 'reg_spaced_gyro_x'], loc='best')
+        plt.show()
     #print(acc_samples)
     #print(gyro_samples)
     return acc_samples, gyro_samples

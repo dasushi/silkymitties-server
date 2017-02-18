@@ -1,9 +1,12 @@
 import numpy as np
+import pandas as pd
 import math
 import csv
 import os
 from timestamps import regularizeTimestamps
 import matplotlib.pyplot as plt
+from pymongo import MongoClient
+import json
 
 #input: [accel[timestamp, ax, ay, az], gyro [timestamp, gx, gy, gz]]
 #output: interval, theta[tx, ty, tz]
@@ -12,16 +15,65 @@ import matplotlib.pyplot as plt
 #theta.length = min(start_time, end_time)
 
 
-def loadFromFile(filename):
-    with open(filename) as f:
+def loadFromFile(plot):
+    with open("data/Board2_ACC_2.csv") as f:
         reader = csv.reader(f)
-        data = list(reader)
-        print(data)
+        orig_acc_data = np.array(list(reader))
+        orig_acc_data = np.delete(orig_acc_data, [0,1], axis=0)
+    with open("data/Board2_GYRO_2.csv") as f:
+        reader = csv.reader(f)
+        orig_gyr_data = list(reader)
+        orig_gyr_data = np.delete(orig_gyr_data, [0,1], axis=0)
+    with open("data/Board1_ACC_2.csv") as f:
+        reader = csv.reader(f)
+        orig_acc_data_2 = np.array(list(reader))
+        orig_acc_data_2 = np.delete(orig_acc_data_2, [0,1], axis=0)
+    with open("data/Board1_GYRO_2.csv") as f:
+        reader = csv.reader(f)
+        orig_gyr_data_2 = list(reader)
+        orig_gyr_data_2 = np.delete(orig_gyr_data_2, [0,1], axis=0)
+    upper_timestamps, upper_pair = processPair(orig_acc_data, orig_gyr_data, plot)
+    lower_timestamps, lower_pair = processPair(orig_acc_data_2, orig_gyr_data_2, plot)
+    printSummary(upper_timestamps, upper_pair, lower_timestamps, lower_pair)
 
-def processPair(accel, gyro):
-    reg_accel, reg_gyro = regularizeTimestamps(accel, gyro)
+def processRawShot(rawShotID):
+    client = MongoClient('localhost', 27017)
+    db = client['restdb']
+    target = db['rawshots'].find_one(rawShotID)
+    data = json.loads(target)
+    upperAccel = np.column_stack((data['upperAccel']['timestamps'], data['upperAccel']['x'], data['upperAccel']['y'], data['upperAccel']['z']))
+    lowerAccel = np.column_stack((data['lowerAccel']['timestamps'], data['lowerAccel']['x'], data['lowerAccel']['y'], data['lowerAccel']['z']))
+    upperGyro = np.column_stack((data['upperGyro']['timestamps'], data['upperGyro']['x'], data['upperGyro']['y'], data['upperGyro']['z']))
+    lowerGyro = np.column_stack((data['lowerGyro']['timestamps'], data['lowerGyro']['x'], data['lowerGyro']['y'], data['lowerGyro']['z']))
+    upper_timestamps, upper_theta = processPair(upperAccel, upperGyro)
+    lower_timestamps, lower_theta = processPair(lowerAccel, lowerGyro)
+
+    fusedShotID = db['fusedshots'].insert_one({'userID':data['userID'], 'upperTimestamps':upper_timestamps, 'lowerTimestamps':lower_timestamps, 'upperTheta':upper_theta, 'lowerTheta':lower_theta}).inserted_id
+
+    return fusedShotID
+
+def processLabelledShot(rawShotID):
+    client = MongoClient('localhost', 27017)
+    db = client['restdb']
+    target = db['labelledshots'].find_one(rawShotID)
+    data = json.loads(target)
+    shotType = data['shotType']
+    upperAccel = np.column_stack((data['upperAccel']['timestamps'], data['upperAccel']['x'], data['upperAccel']['y'], data['upperAccel']['z']))
+    lowerAccel = np.column_stack((data['lowerAccel']['timestamps'], data['lowerAccel']['x'], data['lowerAccel']['y'], data['lowerAccel']['z']))
+    upperGyro = np.column_stack((data['upperGyro']['timestamps'], data['upperGyro']['x'], data['upperGyro']['y'], data['upperGyro']['z']))
+    lowerGyro = np.column_stack((data['lowerGyro']['timestamps'], data['lowerGyro']['x'], data['lowerGyro']['y'], data['lowerGyro']['z']))
+    upper_timestamps, upper_theta = processPair(upperAccel, upperGyro)
+    lower_timestamps, lower_theta = processPair(lowerAccel, lowerGyro)
+
+    fusedShotID = db['lblfusedshots'].insert_one({'userID':data['userID'], 'upperTimestamps':upper_timestamps, 'lowerTimestamps':lower_timestamps, 'upperTheta':upper_theta, 'lowerTheta':lower_theta, 'shotType':shotType}).inserted_id
+
+    return fusedShotID
+
+def processPair(accel, gyro, plotResults):
+    reg_accel, reg_gyro = regularizeTimestamps(accel, gyro, plotResults)
     theta = tilt_correction(reg_accel, reg_gyro)
-    return reg_accel, reg_gyro, theta
+    timestamps = reg_accel[:,0]
+    return timestamps, theta
 
 #converts accelerometer readings into pitch euler angle
 #accel = [timestamp, ax, ay, az]
@@ -70,21 +122,20 @@ def tilt_correction(accel, gyro):
         theta[index,2] = alpha * (theta[index-1,2] + (gyro[index,3] * delta)) + (1 - alpha) * roll_from_accel(lowpass_accel)
     return theta
 
-with open("data/Board2_ACC_2.csv") as f:
-    reader = csv.reader(f)
-    orig_acc_data = np.array(list(reader))
-    orig_acc_data = np.delete(orig_acc_data, [0,1], axis=0)
-with open("data/Board2_GYRO_2.csv") as f:
-    reader = csv.reader(f)
-    orig_gyr_data = list(reader)
-    orig_gyr_data = np.delete(orig_gyr_data, [0,1], axis=0)
-acc_data, gyr_data, theta = processPair(orig_acc_data, orig_gyr_data)
+def printSummary(upper_timestamps, upper_pair, lower_timestamps, lower_pair):
+    # Plot just to test regression
+    plt.plot(upper_timestamps, upper_pair[:,0], '-',
+            upper_timestamps, upper_pair[:,1], '-',
+            upper_timestamps, upper_pair[:,2], '-',
+            lower_timestamps, lower_pair[:,0], '-',
+            lower_timestamps, lower_pair[:,1], '-',
+            lower_timestamps, lower_pair[:,2], '-')
+            #orig_gyr_data[:,0], orig_gyr_data[:,1], '-',
+            #orig_gyr_data[:,0], orig_gyr_data[:,2], '-',
+            #orig_gyr_data[:,0], orig_gyr_data[:,3], '-',)
+    plt.legend(['upperX', 'upperY', 'upperZ', 'lowerX', 'lowerY', 'lowerZ'], loc='best')
+    plt.show()
+    #print(theta)
 
-# Plot just to test regression
-plt.plot(acc_data[:,0], theta, '-')
-        #orig_gyr_data[:,0], orig_gyr_data[:,1], '-',
-        #orig_gyr_data[:,0], orig_gyr_data[:,2], '-',
-        #orig_gyr_data[:,0], orig_gyr_data[:,3], '-',)
-plt.legend(['theta1', 'theta2', 'theta3', 'gyr1', 'gyr2', 'gyr3'], loc='best')
-plt.show()
-#print(theta)
+if __name__=='__main__':
+    loadFromFile(True)
