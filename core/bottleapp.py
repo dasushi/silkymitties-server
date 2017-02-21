@@ -97,13 +97,20 @@ def createShot(mongodb):
     if not request.json:
         abort(400)
     shots = mongodb['labelledshots']
-    userID = request.json['userID']
-    upperAccel = request.json['upperAccel']
-    upperGyro = request.json['upperGyro']
-    lowerAccel = request.json['lowerAccel']
-    lowerGyro = request.json['lowerGyro']
-    shotType = request.json['shotType']
-    new_shot_id = shots.insert_one({'userID':userID, 'upperGyro':upperGyro, 'upperAccel':upperAccel, 'lowerGyro':lowerGyro, 'lowerAccel':lowerAccel, 'shotType': shotType}).inserted_id
+    shot = request.json['shot']
+    userID = shot['userID']
+    upperGyro = shot['upperGyro']
+    upperAccel = shot['upperAccel']
+    lowerAccel = shot['lowerAccel']
+    lowerGyro = shot['lowerGyro']
+    shotType = shot['type']
+    speed = shot['speed']
+    handedness = shot['shoots']
+    accuracy = shot['accuracy']
+    new_shot_id = shots.insert_one({'userID':userID, 'upperGyro':upperGyro, \
+        'upperAccel':upperAccel, 'lowerGyro':lowerGyro, 'lowerAccel':lowerAccel, \
+        'shotType': shotType, 'handedness':handedness, 'speed':speed, \
+        'accuracy':accuracy}).inserted_id
     new_shot = shots.find({'_id':new_shot_id})
 
     fused_id = processLabelledShot(new_shot_id)
@@ -205,10 +212,8 @@ def getAllUsers(mongodb):
 @app.route('/users', method='DELETE')
 def getAllUsers(mongodb):
     results = mongodb['users']
-    output = []
-    for s in results.find():
-        output.append(dumps(s))
-    return dumps(output)
+    results.drop()
+    return 204
 
 @app.route('/user/<user_id>', method='GET')
 def getUser(user_id, mongodb):

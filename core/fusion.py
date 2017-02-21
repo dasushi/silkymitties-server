@@ -62,10 +62,13 @@ def processLabelledShot(rawShotID):
     lowerAccel = np.column_stack((data['lowerAccel']['timestamps'], data['lowerAccel']['x'], data['lowerAccel']['y'], data['lowerAccel']['z']))
     upperGyro = np.column_stack((data['upperGyro']['timestamps'], data['upperGyro']['x'], data['upperGyro']['y'], data['upperGyro']['z']))
     lowerGyro = np.column_stack((data['lowerGyro']['timestamps'], data['lowerGyro']['x'], data['lowerGyro']['y'], data['lowerGyro']['z']))
-    upper_timestamps, upper_theta = processPair(upperAccel, upperGyro)
-    lower_timestamps, lower_theta = processPair(lowerAccel, lowerGyro)
+    upper_timestamps, upper_theta = processPair(upperAccel, upperGyro, False)
+    lower_timestamps, lower_theta = processPair(lowerAccel, lowerGyro, False)
 
-    fusedShotID = db['lblfusedshots'].insert_one({'userID':data['userID'], 'upperTimestamps':upper_timestamps, 'lowerTimestamps':lower_timestamps, 'upperTheta':upper_theta, 'lowerTheta':lower_theta, 'shotType':shotType}).inserted_id
+    fusedShotID = db['lblfusedshots'].insert_one({'userID':data['userID'], \
+        'upperTimestamps':upper_timestamps, 'lowerTimestamps':lower_timestamps, \
+        'upperTheta':upper_theta, 'lowerTheta':lower_theta, 'shotType':shotType, \
+        'accuracy':data['accuracy'], 'speed':data['speed'], 'handedness':data['handedness']}).inserted_id
 
     return fusedShotID
 
