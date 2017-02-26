@@ -98,19 +98,18 @@ def createShot(mongodb):
         abort(400)
     shots = mongodb['labelledshots']
     shot = request.json['shot']
-    userID = shot['userID']
+    #userID = shot['userID']
     upperGyro = shot['upperGyro']
     upperAccel = shot['upperAccel']
     lowerAccel = shot['lowerAccel']
     lowerGyro = shot['lowerGyro']
     shotType = shot['type']
-    speed = shot['speed']
+    #speed = shot['speed']
     handedness = shot['shoots']
-    accuracy = shot['accuracy']
-    new_shot_id = shots.insert_one({'userID':userID, 'upperGyro':upperGyro, \
+    #accuracy = shot['accuracy']
+    new_shot_id = shots.insert_one({'upperGyro':upperGyro, \
         'upperAccel':upperAccel, 'lowerGyro':lowerGyro, 'lowerAccel':lowerAccel, \
-        'shotType': shotType, 'handedness':handedness, 'speed':speed, \
-        'accuracy':accuracy}).inserted_id
+        'shotType': shotType, 'handedness':handedness}).inserted_id
     new_shot = shots.find({'_id':new_shot_id})
 
     fused_id = processLabelledShot(new_shot_id)
@@ -233,7 +232,7 @@ def createUser(mongodb):
     firstName = request.json['firstName']
     lastName = request.json['lastName']
     age = request.json['age']
-    handedness = request.json['handedness']
+    handedness = request.json['shoots']
     height = request.json['height']
     new_user_id = users.insert_one({'firstName':firstName, 'lastName':lastName, 'age':age, 'handedness':handedness, 'height':height}).inserted_id
     new_user = users.find({'_id':new_user_id})
@@ -249,6 +248,6 @@ def not_found(error):
 
 if __name__=='__main__':
     #private network run
-    #app.run(debug=True, host='127.0.0.1', port=8080)
+    app.run(debug=True, host='127.0.0.1', port=8080)
     #public network run
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    #app.run(debug=True, host='0.0.0.0', port=8080)
