@@ -66,12 +66,13 @@ def regularizeTimestamps(accel, gyro, plotResults):
     #original_acc_z = extract_property_values(acc_samples, 'z')
 
     #Split input into individual arrays
-    original_gyro_timestamps = np.array([int(row[0]) for row in gyro])
+
+    original_gyro_timestamps = np.array([(int(row[0]) - gyro[0][0]) for row in gyro])
     original_gyro_x = np.array([row[1] for row in gyro])
     original_gyro_y = np.array([row[2] for row in gyro])
     original_gyro_z = np.array([row[3] for row in gyro])
 
-    original_acc_timestamps = np.array([int(row[0]) for row in accel])
+    original_acc_timestamps = np.array([(int(row[0]) - accel[0][0]) for row in accel])
     original_acc_x = np.array([row[1] for row in accel])
     original_acc_y = np.array([row[2] for row in accel])
     original_acc_z = np.array([row[3] for row in accel])
@@ -89,7 +90,7 @@ def regularizeTimestamps(accel, gyro, plotResults):
     first_timestamp = max(original_gyro_timestamps[0], original_acc_timestamps[0])
     last_timestamp = min(original_gyro_timestamps[-1], original_acc_timestamps[-1])
     num_samples = int(round((len(original_gyro_timestamps) + len(original_acc_timestamps)) / 2))
-    reg_spaced_timestamps = np.linspace(first_timestamp, last_timestamp, num_samples, endpoint=True)
+    reg_spaced_timestamps = np.linspace(0, last_timestamp - first_timestamp, num_samples, endpoint=True, dtype='int16')
 
     reg_spaced_gyro_x = interpolate_gyro_x(reg_spaced_timestamps)
     reg_spaced_gyro_y = interpolate_gyro_y(reg_spaced_timestamps)
