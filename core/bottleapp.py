@@ -1,8 +1,9 @@
-from bottle import route, run, Bottle, error, request
+from bottle import route, run, Bottle, error, request, abort
 from bottle.ext.mongo import MongoPlugin
 from bson.json_util import dumps
 from bson.objectid import ObjectId
-from fusion import processRawShot, processLabelledShot
+from fusion import processRawShot, processServerLabelledShot
+from lstm import predictShotTypeResult
 #from lstm import predictResult
 
 app = Bottle()
@@ -51,17 +52,25 @@ def createShot(mongodb):
     if not request.json:
         abort(400)
     shots = mongodb['rawshots']
-    userID = request.json['userID']
-    upperAccel = request.json['upperAccel']
-    upperGyro = request.json['upperGyro']
-    lowerAccel = request.json['lowerAccel']
-    lowerGyro = request.json['lowerGyro']
-    new_shot_id = shots.insert_one({'userID':userID, 'upperGyro':upperGyro, 'upperAccel':upperAccel, 'lowerGyro':lowerGyro, 'lowerAccel':lowerAccel}).inserted_id
-    new_shot = shots.find({'_id':new_shot_id})
+    #userID = request.json['userID']
+    shot = request.json['shot']
+    handedness = shot['shoots']
+    upperAccel = shot['upperAccel']
+    upperGyro = shot['upperGyro']
+    lowerAccel = shot['lowerAccel']
+    lowerGyro = shot['lowerGyro']
+    new_shot_id = shots.insert_one({'upperGyro':upperGyro,
+        'upperAccel':upperAccel, 'lowerGyro':lowerGyro, 'lowerAccel':lowerAccel,
+        'handedness':handedness}).inserted_id
+    #new_shot = shots.find_one({'_id':new_shot_id})
 
-    mlResultID = processRawShot(new_shot_id)
+    fusedshotID = processRawShot(new_shot_id)
 
-    return dumps({'rawshotID': new_shot_id, 'fusedshotID': fused_id})
+    mlResult = predictShotTypeResult(fusedshotID)
+    fusedShot = mongodb['fusedshots'].find_one({'_id':ObjectId(fusedshotID)})
+
+    return dumps({'rawshotID': new_shot_id, 'fusedShot': fusedShot, 'shotType':mlResult})
+
 
 ### LABELLEDSHOTS ###
 #Stores raw copies of shots directly from Android device WITH labelled data
@@ -94,9 +103,11 @@ def deleteShot(shot_id, mongodb):
 
 @app.route('/labelledshots', method='PUT')
 def createShot(mongodb):
+    #print(request.json)
     if not request.json:
         abort(400)
     shots = mongodb['labelledshots']
+    #print(request.json['shot'])
     shot = request.json['shot']
     #userID = shot['userID']
     upperGyro = shot['upperGyro']
@@ -110,11 +121,12 @@ def createShot(mongodb):
     new_shot_id = shots.insert_one({'upperGyro':upperGyro, \
         'upperAccel':upperAccel, 'lowerGyro':lowerGyro, 'lowerAccel':lowerAccel, \
         'shotType': shotType, 'handedness':handedness}).inserted_id
-    new_shot = shots.find({'_id':new_shot_id})
+    #new_shot = shots.find({'_id':new_shot_id})
 
-    fused_id = processLabelledShot(new_shot_id)
+    fused_id = processServerLabelledShot(new_shot_id)
+    fused_shot = mongodb['lblfusedshots'].find_one({'_id':ObjectId(fused_id)})
 
-    return dumps({'labelledshotID': new_shot_id, 'lblfusedshotID': fused_id})
+    return dumps({'labelledshotID': new_shot_id, 'lblfusedshot': fused_shot})
 
 ### FUSED SHOTS ###
 @app.route('/fusedshots', method='GET')
@@ -167,7 +179,7 @@ def getShot(shot_id, mongodb):
 
 @app.route('/lblfusedshot/<shot_id>', method='DELETE')
 def deleteShot(shot_id, mongodb):
-    mongodb['fusedshots'].remove({'_id':ObjectId(shot_id)}, 1)
+    mongodb['lblfusedshots'].remove({'_id':ObjectId(shot_id)}, 1)
     return {'Result': 'True'}
 
 ### ML_DATA ###
@@ -234,7 +246,9 @@ def createUser(mongodb):
     age = request.json['age']
     handedness = request.json['shoots']
     height = request.json['height']
-    new_user_id = users.insert_one({'firstName':firstName, 'lastName':lastName, 'age':age, 'handedness':handedness, 'height':height}).inserted_id
+    new_user_id = users.insert_one({'firstName':firstName,
+        'lastName':lastName, 'age':age, 'handedness':handedness,
+        'height':height}).inserted_id
     new_user = users.find({'_id':new_user_id})
     return dumps(new_user)
 

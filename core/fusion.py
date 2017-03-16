@@ -6,6 +6,7 @@ import os
 from timestamps import regularizeTimestamps
 import matplotlib.pyplot as plt
 from pymongo import MongoClient
+from lstm import predictShotTypeResult
 import json
 
 #input: [accel[timestamp, ax, ay, az], gyro [timestamp, gx, gy, gz]]
@@ -17,6 +18,8 @@ import json
 def loadJSONFolder():
     client = MongoClient('localhost', 27017)
     db = client['restdb']
+    db['testlabelledshots'].remove()
+    db['testlblfusedshots'].remove()
     files = [f for f in os.listdir("json") if os.path.isfile(os.path.join("json", f))]
     total_data = []
     for f in files:
@@ -36,8 +39,12 @@ def loadJSONFolder():
             'shotType': shotType, 'handedness':handedness}).inserted_id
         fused_id = processLabelledShot(new_shot_id)
 
-        total_data.append(fused_id)
-
+        total_data.append({new_shot_id:fused_id})
+    #for shot in db['lblfusedshots'].find():
+    #    new_shot_id = shot['_id']
+    #    fused_id = db['testlblfusedshots'].insert_one(shot).inserted_id
+    #    total_data.append({new_shot_id:fused_id})
+    print(total_data)
 
 def loadFromFile(plot):
     with open("data/Board2_ACC_2.csv") as f:
@@ -63,26 +70,29 @@ def loadFromFile(plot):
 def processRawShot(rawShotID):
     client = MongoClient('localhost', 27017)
     db = client['restdb']
-    target = db['rawshots'].find_one(rawShotID)
-    data = json.loads(target)
+    data = db['rawshots'].find_one(rawShotID)
     upperAccel = np.column_stack((data['upperAccel']['timestamps'], data['upperAccel']['x'], data['upperAccel']['y'], data['upperAccel']['z']))
     lowerAccel = np.column_stack((data['lowerAccel']['timestamps'], data['lowerAccel']['x'], data['lowerAccel']['y'], data['lowerAccel']['z']))
     upperGyro = np.column_stack((data['upperGyro']['timestamps'], data['upperGyro']['x'], data['upperGyro']['y'], data['upperGyro']['z']))
     lowerGyro = np.column_stack((data['lowerGyro']['timestamps'], data['lowerGyro']['x'], data['lowerGyro']['y'], data['lowerGyro']['z']))
+    handedness = data['handedness']
     upper_timestamps, upper_theta = processPair(upperAccel, upperGyro, False)
     lower_timestamps, lower_theta = processPair(lowerAccel, lowerGyro, False)
 
-    uthetaX = upper_theta[:,0]
-    uthetaY = upper_theta[:,1]
-    uthetaZ = upper_theta[:,2]
+    uthetaX = upper_theta[:,0].tolist()
+    uthetaY = upper_theta[:,1].tolist()
+    uthetaZ = upper_theta[:,2].tolist()
 
-    lthetaX = lower_theta[:,0]
-    lthetaY = lower_theta[:,1]
-    lthetaZ = lower_theta[:,2]
+    lthetaX = lower_theta[:,0].tolist()
+    lthetaY = lower_theta[:,1].tolist()
+    lthetaZ = lower_theta[:,2].tolist()
 
-    fusedShotID = db['fusedshots'].insert_one({'upperTimestamps':upper_timestamps, \
-    'lowerTimestamps':lower_timestamps, 'upperTheta':{'uthetaX':uthetaX, 'uthetaY':uthetaY, 'uthetaZ':uthetaZ}, \
-    'lowerTheta':{'lthetaX':lthetaX, 'lthetaY':lthetaY, 'lthetaZ':lthetaZ},}).inserted_id
+    fusedShotID = db['fusedshots'].insert_one({'upperTimestamps':upper_timestamps.tolist(), \
+    'lowerTimestamps':lower_timestamps.tolist(), 'upperTheta':{'uthetaX':uthetaX, 'uthetaY':uthetaY, 'uthetaZ':uthetaZ}, \
+    'lowerTheta':{'lthetaX':lthetaX, 'lthetaY':lthetaY, 'lthetaZ':lthetaZ}, 'handedness':handedness}).inserted_id
+    print(fusedShotID)
+
+    #shotType, mlResultID = predictShotTypeResult(fusedShotID)
 
     return fusedShotID
 
@@ -101,9 +111,38 @@ def processLabelledShot(rawShotID):
     lowerAccel = np.column_stack((data['lowerAccel']['timestamps'], data['lowerAccel']['x'], data['lowerAccel']['y'], data['lowerAccel']['z']))
     upperGyro = np.column_stack((data['upperGyro']['timestamps'], data['upperGyro']['x'], data['upperGyro']['y'], data['upperGyro']['z']))
     lowerGyro = np.column_stack((data['lowerGyro']['timestamps'], data['lowerGyro']['x'], data['lowerGyro']['y'], data['lowerGyro']['z']))
-    upper_timestamps, upper_theta = processPair(upperAccel, upperGyro, True)
-    lower_timestamps, lower_theta = processPair(lowerAccel, lowerGyro, True)
-    printSummary(upper_timestamps, upper_theta, lower_timestamps, lower_theta)
+    upper_timestamps, upper_theta = processPair(upperAccel, upperGyro, False)
+    lower_timestamps, lower_theta = processPair(lowerAccel, lowerGyro, False)
+    #printSummary(upper_timestamps, upper_theta, lower_timestamps, lower_theta)
+    upper_timestamps = upper_timestamps.tolist()
+    lower_timestamps = lower_timestamps.tolist()
+    uthetaX = upper_theta[:,0].tolist()
+    uthetaY = upper_theta[:,1].tolist()
+    uthetaZ = upper_theta[:,2].tolist()
+
+    lthetaX = lower_theta[:,0].tolist()
+    lthetaY = lower_theta[:,1].tolist()
+    lthetaZ = lower_theta[:,2].tolist()
+
+    fusedShotID = db['testlblfusedshots'].insert_one({'upperTimestamps':upper_timestamps, 'lowerTimestamps':lower_timestamps, \
+        'upperTheta':{'uthetaX':uthetaX, 'uthetaY':uthetaY, 'uthetaZ':uthetaZ}, \
+        'lowerTheta':{'lthetaX':lthetaX, 'lthetaY':lthetaY, 'lthetaZ':lthetaZ}, \
+        'shotType':shotType,'handedness':data['handedness'], 'rawShotID':str(rawShotID)}).inserted_id
+
+    return fusedShotID
+
+def processServerLabelledShot(rawShotID):
+    client = MongoClient('localhost', 27017)
+    db = client['restdb']
+    data = db['labelledshots'].find_one(rawShotID)
+    shotType = data['shotType']
+    upperAccel = np.column_stack((data['upperAccel']['timestamps'], data['upperAccel']['x'], data['upperAccel']['y'], data['upperAccel']['z']))
+    lowerAccel = np.column_stack((data['lowerAccel']['timestamps'], data['lowerAccel']['x'], data['lowerAccel']['y'], data['lowerAccel']['z']))
+    upperGyro = np.column_stack((data['upperGyro']['timestamps'], data['upperGyro']['x'], data['upperGyro']['y'], data['upperGyro']['z']))
+    lowerGyro = np.column_stack((data['lowerGyro']['timestamps'], data['lowerGyro']['x'], data['lowerGyro']['y'], data['lowerGyro']['z']))
+    upper_timestamps, upper_theta = processPair(upperAccel, upperGyro, False)
+    lower_timestamps, lower_theta = processPair(lowerAccel, lowerGyro, False)
+    #printSummary(upper_timestamps, upper_theta, lower_timestamps, lower_theta)
     upper_timestamps = upper_timestamps.tolist()
     lower_timestamps = lower_timestamps.tolist()
     uthetaX = upper_theta[:,0].tolist()
@@ -117,7 +156,7 @@ def processLabelledShot(rawShotID):
     fusedShotID = db['lblfusedshots'].insert_one({'upperTimestamps':upper_timestamps, 'lowerTimestamps':lower_timestamps, \
         'upperTheta':{'uthetaX':uthetaX, 'uthetaY':uthetaY, 'uthetaZ':uthetaZ}, \
         'lowerTheta':{'lthetaX':lthetaX, 'lthetaY':lthetaY, 'lthetaZ':lthetaZ}, \
-        'shotType':shotType,'handedness':data['handedness']}).inserted_id
+        'shotType':shotType,'handedness':data['handedness'], 'rawShotID':str(rawShotID)}).inserted_id
 
     return fusedShotID
 
